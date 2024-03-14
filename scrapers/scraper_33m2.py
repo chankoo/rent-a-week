@@ -1,6 +1,46 @@
 import requests
 from urllib import parse
+from bs4 import BeautifulSoup
 
+DETAIL_STR_KEYS = [
+    "title",
+    "meta_description",
+    "meta_keywords",
+    "og_image",
+    "room_name",
+    "address",
+    "introduction",
+    "room_count",
+    "area",
+    "location",
+    "min_contract_period",
+    "rental_fee",
+    "management_fee",
+    "cleaning_fee",
+    "deposit"
+]
+DETAIL_LST_KEYS = ["basic_options", "additional_options"]
+
+def create_detail_data_scheme():
+    scheme = {key: "" for key in [
+        "title",
+        "meta_description",
+        "meta_keywords",
+        "og_image",
+        "room_name",
+        "address",
+        "introduction",
+        "room_count",
+        "area",
+        "location",
+        "min_contract_period",
+        "rental_fee",
+        "management_fee",
+        "cleaning_fee",
+        "deposit"
+    ]}
+    scheme.update({key: [] for key in ["basic_options", "additional_options"]})
+    return scheme
 
 # map
 def search(data: dict = None):
@@ -126,3 +166,94 @@ def schedule(rid: int, year: str, month: str):
     }
     res = requests.post(url, headers=headers, data=data)
     return res
+
+
+def detail(rid: int):
+    url = f"https://33m2.co.kr/room/detail/{rid}"
+    headers = {
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+        "Accept-Encoding": "gzip, deflate, br, zstd",
+        "Accept-Language": "ko-KR,ko;q=0.9",
+        "Cache-Control": "no-cache",
+        "Cookie": "JSESSIONID=A24E6E175B661CE3E93B3BFD8EEDDFCC; webuuid=web-ee65b266-1063-4c5f-8b99-f0242dfda64c; _ga=GA1.1.2071080023.1710422730; _fbp=fb.2.1710422730522.113407075; ab180ClientId=7bb600b3-76c6-41d0-9cb5-e52a55f52e64; _ga_9DDC4XR357=GS1.1.1710422730.1.1.1710427413.54.0.0; airbridge_session=%7B%22id%22%3A%2228c16fa2-7c3b-4436-b489-4c39201a5a2d%22%2C%22timeout%22%3A1800000%2C%22start%22%3A1710422731034%2C%22end%22%3A1710427414160%7D; AWSALB=LwBDXcc4KQMAoqywN47Cn4F4cP/y+kET0dpRoXX7jpB0YqdPGe4XnOg2Ua40ja8BhRmoVSnjvoMcrXxOGcBI8kT1uNmt8UW/PMEreHkdVJLxv8VT/YwSZmeHHJFJ; AWSALBCORS=LwBDXcc4KQMAoqywN47Cn4F4cP/y+kET0dpRoXX7jpB0YqdPGe4XnOg2Ua40ja8BhRmoVSnjvoMcrXxOGcBI8kT1uNmt8UW/PMEreHkdVJLxv8VT/YwSZmeHHJFJ",
+        "Pragma": "no-cache",
+        "Sec-Ch-Ua": '"Not A(Brand";v="99", "Google Chrome";v="121", "Chromium";v="121"',
+        "Sec-Ch-Ua-Mobile": "?0",
+        "Sec-Ch-Ua-Platform": '"macOS"',
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "same-origin",
+        "Sec-Fetch-User": "?1",
+        "Upgrade-Insecure-Requests": "1",
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
+    }
+    res = requests.get(url, headers=headers)
+    return res
+
+
+
+def parse_detail(rid: int) -> dict:
+    res = detail(rid)
+    soup = BeautifulSoup(res.text, 'html.parser')
+    
+    result = create_detail_data_scheme()
+    
+    # 타이틀 추출
+    result["title"] = soup.title.text.strip()
+
+    # 메타 데이터 추출
+    result["og_image"] = soup.find('meta', {'property': 'og:image'})['content']
+
+    # 주요 정보
+    main_content = soup.find('section', {'class': 'content'})
+    room_info = main_content.find('div', {'class': 'room_info'})
+
+    if room_info:
+        # 방 정보
+        result["room_name"] = room_info.find('div', {'class': 'title'}).strong.text.strip()
+        result["address"] = room_info.find('p', {'class': 'add_text'}).text.strip()
+        introduction_raw = room_info.find('div', {'class': 'title_text'})
+        if introduction_raw:
+            result["introduction"] = introduction_raw.text.strip()
+
+    # 기본 정보
+    basic_info = room_info.find('div', {'class': 'place_box'}) if room_info else None
+
+    if basic_info:
+        result["room_count"] = basic_info.find('ul', {'class': 'place_list'}).li.p.text
+        result["area"] = basic_info.find('ul', {'class': 'place_detail'}).find('span').next_sibling.strip()
+
+    if room_info:
+        # 옵션
+        options_raw = room_info.find('div', {'class': 'room_info'}, string='기본 옵션')
+        options = options_raw.find_next('ul', {'class': 'option'}) if options_raw else []
+        if options:
+            result["basic_options"] = [option.p.text.strip() for option in options.find_all('li')]
+
+        # 그 밖의 옵션
+        other_options_raw = room_info.find('div', {'class': 'room_info'}, string='그 밖의 옵션')
+        other_options = other_options_raw.find_next('ul', {'class': 'option etc'}) if other_options_raw else []
+        if other_options:
+            result["additional_options"] = [option.p.text.strip() for option in other_options.find_all('li')]
+
+        # 교통 & 위치
+        location_info = room_info.find('div', {'class': 'room_info'}, string='교통 & 위치')
+        if location_info:
+            result["location"] = location_info.find('div', {'class': 'title_text'}).text.strip()
+
+        # 계약 정보
+        contract_info = room_info.find('div', {'class': 'room_info'}, string='계약 정보')
+        if contract_info:
+            result["min_contract_period"] = contract_info.find('p', {'class': 'icon_info'}).strong.text
+
+        if contract_info:
+            # 보증금, 임대료, 관리비, 청소비 정보
+            table = contract_info.find('table', {'class': 'tbl_style'})
+            rows = table.find_all('tbody')[0].find_all('td') if table else []
+            if rows:
+                result["rental_fee"], result["management_fee"], result["cleaning_fee"], result["deposit"] = [row.text.strip() for row in rows]
+    return result
+
+
+
+
