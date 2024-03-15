@@ -1,11 +1,10 @@
+import os
 import requests
 from urllib import parse
 from bs4 import BeautifulSoup
 
 DETAIL_STR_KEYS = [
     "title",
-    "meta_description",
-    "meta_keywords",
     "og_image",
     "room_name",
     "address",
@@ -22,24 +21,8 @@ DETAIL_STR_KEYS = [
 DETAIL_LST_KEYS = ["basic_options", "additional_options"]
 
 def create_detail_data_scheme():
-    scheme = {key: "" for key in [
-        "title",
-        "meta_description",
-        "meta_keywords",
-        "og_image",
-        "room_name",
-        "address",
-        "introduction",
-        "room_count",
-        "area",
-        "location",
-        "min_contract_period",
-        "rental_fee",
-        "management_fee",
-        "cleaning_fee",
-        "deposit"
-    ]}
-    scheme.update({key: [] for key in ["basic_options", "additional_options"]})
+    scheme = {key: "" for key in DETAIL_STR_KEYS}
+    scheme.update({key: [] for key in DETAIL_LST_KEYS})
     return scheme
 
 # map
@@ -195,9 +178,11 @@ def detail(rid: int):
 def parse_detail(rid: int) -> dict:
     res = detail(rid)
     soup = BeautifulSoup(res.text, 'html.parser')
-    
     result = create_detail_data_scheme()
-    
+
+    # 이미지 다운로드
+    download_room_images(soup, output_path=f'data/room_images/{rid}')
+
     # 타이틀 추출
     result["title"] = soup.title.text.strip()
 
@@ -256,4 +241,26 @@ def parse_detail(rid: int) -> dict:
 
 
 
-
+def download_room_images(soup, output_path):
+    # Create output folder if it doesn't exist
+    if not os.path.exists(output_path):
+        os.makedirs(output_path)
+    
+    # Find all divs with class 'swiper-slide' containing image URLs
+    image_divs = soup.find_all('div', class_='swiper-slide')
+    
+    # Counter for image numbering
+    image_count = 1
+    
+    # Download each image
+    for div in image_divs:
+        # Extract image URL
+        image_url = div.find('img')['src']
+        
+        # Download the image
+        response = requests.get(image_url)
+        if response.status_code == 200:
+            # Write the image to a file
+            with open(os.path.join(output_path, f'image_{image_count}.jpg'), 'wb') as f:
+                f.write(response.content)
+            image_count += 1
