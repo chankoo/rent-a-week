@@ -1,4 +1,5 @@
 from scrapers.scraper_33m2 import search, search_list, schedule, detail, parse_detail, create_detail_data_scheme
+from scrapers.consts import create_detail_data_scheme
 
 def test_search():
     res = search()

@@ -3,29 +3,8 @@ import requests
 from urllib import parse
 from bs4 import BeautifulSoup
 
-DETAIL_STR_KEYS = [
-    "title",
-    "og_image",
-    "room_name",
-    "address",
-    "introduction",
-    "room_count",
-    "area",
-    "location",
-    "min_contract_period",
-    "rental_fee",
-    "management_fee",
-    "cleaning_fee",
-    "deposit"
-]
-DETAIL_LST_KEYS = ["basic_options", "additional_options"]
+from consts import create_detail_data_scheme
 
-def create_detail_data_scheme():
-    scheme = {key: "" for key in DETAIL_STR_KEYS}
-    scheme.update({key: [] for key in DETAIL_LST_KEYS})
-    return scheme
-
-# map
 def search(data: dict = None):
     url = "https://33m2.co.kr/app/room/search"
     headers = {
@@ -112,9 +91,9 @@ def search_list(keyword:str = '', page:int = 1, data: dict = None):
         "start_date": "",
         "end_date": "",
         "week": "",
-        "min_using_fee": "",
-        "max_using_fee": "",
-        "sort": "popular",
+        "min_using_fee": "0",
+        "max_using_fee": "1000000",
+        "sort": "recent",
         "now_page": f"{page}"
     }
     res = requests.post(url, json=data, headers=headers)
@@ -183,62 +162,60 @@ def parse_detail(rid: int) -> dict:
     # 이미지 다운로드
     download_room_images(soup, output_path=f'data/room_images/{rid}')
 
-    # 타이틀 추출
+    # 메타 정보
     result["title"] = soup.title.text.strip()
-
-    # 메타 데이터 추출
     result["og_image"] = soup.find('meta', {'property': 'og:image'})['content']
 
-    # 주요 정보
     main_content = soup.find('section', {'class': 'content'})
-    room_info = main_content.find('div', {'class': 'room_info'})
+    room_infos = main_content.find_all('div', {'class': 'room_info'})
 
-    if room_info:
-        # 방 정보
-        result["room_name"] = room_info.find('div', {'class': 'title'}).strong.text.strip()
-        result["address"] = room_info.find('p', {'class': 'add_text'}).text.strip()
-        introduction_raw = room_info.find('div', {'class': 'title_text'})
-        if introduction_raw:
-            result["introduction"] = introduction_raw.text.strip()
+    if not room_infos:
+        return result
+    
+    # 방 정보
+    room_info0 = room_infos[0]
+    result["room_name"] = room_info0.find('div', {'class': 'title'}).strong.text.strip()
+    result["address"] = room_info0.find('p', {'class': 'add_text'}).text.strip()
+    result["badges"] = [badge.text.strip() for badge in room_info0.select('.group .badge')]
 
-    # 기본 정보
-    basic_info = room_info.find('div', {'class': 'place_box'}) if room_info else None
-
-    if basic_info:
-        result["room_count"] = basic_info.find('ul', {'class': 'place_list'}).li.p.text
-        result["area"] = basic_info.find('ul', {'class': 'place_detail'}).find('span').next_sibling.strip()
-
-    if room_info:
-        # 옵션
-        options_raw = room_info.find('div', {'class': 'room_info'}, string='기본 옵션')
-        options = options_raw.find_next('ul', {'class': 'option'}) if options_raw else []
-        if options:
-            result["basic_options"] = [option.p.text.strip() for option in options.find_all('li')]
-
-        # 그 밖의 옵션
-        other_options_raw = room_info.find('div', {'class': 'room_info'}, string='그 밖의 옵션')
-        other_options = other_options_raw.find_next('ul', {'class': 'option etc'}) if other_options_raw else []
-        if other_options:
-            result["additional_options"] = [option.p.text.strip() for option in other_options.find_all('li')]
-
-        # 교통 & 위치
-        location_info = room_info.find('div', {'class': 'room_info'}, string='교통 & 위치')
-        if location_info:
-            result["location"] = location_info.find('div', {'class': 'title_text'}).text.strip()
-
-        # 계약 정보
-        contract_info = room_info.find('div', {'class': 'room_info'}, string='계약 정보')
-        if contract_info:
-            result["min_contract_period"] = contract_info.find('p', {'class': 'icon_info'}).strong.text
-
-        if contract_info:
-            # 보증금, 임대료, 관리비, 청소비 정보
-            table = contract_info.find('table', {'class': 'tbl_style'})
-            rows = table.find_all('tbody')[0].find_all('td') if table else []
-            if rows:
-                result["rental_fee"], result["management_fee"], result["cleaning_fee"], result["deposit"] = [row.text.strip() for row in rows]
+    for room_info in room_infos[1:]:
+        section_title = room_info.find(class_='title').text.strip()
+        if section_title == "공간 기본 정보":
+            res = {}
+            li_tags = room_info.select('ul.place_detail li')
+            for li_tag in li_tags:
+                res[li_tag.find('span').text.strip()] = li_tag.find('strong').text.strip()
+            result["default_info"] = res
+            result["default_keywords"] = [keyword.text.strip() for keyword in room_info.select(".keyword_area > span")]
+        elif section_title == "기본 옵션":
+            result["default_options"] = [option.text.strip() for option in room_info.select("ul.option > li > p")]
+        elif section_title == "그 밖의 옵션":
+            result["etc_options"] = [option.text.strip() for option in room_info.select("ul.option > li > p")]
+        elif section_title == "교통 & 위치":
+            result["location_text"] = room_info.find_all(class_='title_text')[-1].text.strip()
+            result["location_keywords"] = [keyword.text.strip() for keyword in room_info.select(".keyword_area > span")]
+        elif section_title == "계약 정보":
+            res = {}
+            table = room_info.find('table')
+            header = [th.text.strip() for th in table.find_all('th')]
+            tds = []
+            for td in table.select('tbody > td'):
+                tds.append(td.text.strip())
+            for i, column_name in enumerate(header):
+                res[column_name] = tds[i]
+            result["price_info"] = res
+        elif section_title[:5] == "이용 후기":
+            reviews = []
+            li_tags = room_info.select(".review_list > li")
+            for li_tag in li_tags:
+                review = {}
+                review['score'] = li_tag.find(class_='score')['style'].split(': ')[1].split('%')[0]
+                review['reviewer'] = li_tag.find(class_='review_item').text.strip()
+                review['date'] = li_tag.find_all(class_='review_item')[1].text.strip()
+                review['content'] = li_tag.find(class_='review_text').text.strip()
+                reviews.append(review)
+            result["reviews"] = reviews
     return result
-
 
 
 def download_room_images(soup, output_path):
