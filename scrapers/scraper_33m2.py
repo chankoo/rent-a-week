@@ -157,6 +157,10 @@ def detail(rid: int):
 def parse_detail(rid: int) -> dict:
     res = detail(rid)
     soup = BeautifulSoup(res.text, 'html.parser')
+    
+    if soup.find('div', class_='guide_message'):
+        return {}
+    
     result = create_detail_data_scheme()
 
     # 이미지 다운로드

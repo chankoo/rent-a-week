@@ -2,3 +2,5 @@ requests
 ipython
 pytest
 bs4
+pandas
+openpyxl
