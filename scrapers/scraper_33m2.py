@@ -214,6 +214,9 @@ async def parse_detail(rid: int) -> dict:
     result["og_image"] = soup.find('meta', {'property': 'og:image'})['content']
 
     main_content = soup.find('section', {'class': 'content'})
+    
+    # 호스트
+    result["host"] = main_content.find('div', {'class': 'profile_name'}).strong.text.strip()
     room_infos = main_content.find_all('div', {'class': 'room_info'})
 
     if not room_infos:

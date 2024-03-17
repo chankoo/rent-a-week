@@ -32,6 +32,7 @@ async def test_detail():
 async def test_parse_detail():
     res = await parse_detail(rid=21342)
     assert isinstance(res, dict)
+    assert "host" in res.keys()
     assert res.keys() == create_detail_data_scheme().keys()
 
 def test_get_remain_days_of_month():
