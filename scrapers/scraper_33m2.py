@@ -193,7 +193,7 @@ async def aggregate_schedules(rid:int, months:int=3) -> dict:
     return res
 
 
-async def parse_detail(rid: int) -> dict:
+async def parse_detail(rid: int, with_img=True) -> dict:
     res = await detail(rid)
     soup = BeautifulSoup(res.text, 'html.parser')
     
@@ -202,11 +202,12 @@ async def parse_detail(rid: int) -> dict:
     
     result = create_detail_data_scheme()
 
-    # 이미지 다운로드
-    try:
-        await download_room_images(soup, output_path=f'data/room_images/{rid}')
-    except httpx.ReadTimeout as e:
-        print(f'{rid}!! httpx.ReadTimeout {download_room_images}')
+    if with_img:
+        # 이미지 다운로드
+        try:
+            await download_room_images(soup, output_path=f'data/room_images/{rid}')
+        except httpx.ReadTimeout:
+            print(f'{rid}!! httpx.ReadTimeout {download_room_images}')
 
     # 메타 정보
     result["rid"] = rid
