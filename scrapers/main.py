@@ -1,19 +1,15 @@
-from scraper_33m2 import parse_detail
-from extractors import ExcelExtractor
 import time
-import datetime
-from zoneinfo import ZoneInfo
 import asyncio
 
-local_tz = ZoneInfo('Asia/Seoul')
+from scraper_33m2 import parse_detail, aggregate_schedules
+from extractors import ExcelExtractor
+from utils import tz_now
 
 
-async def main():
+async def details(from_rid:int, batch_size:int):
     s = time.time()
-    ee = ExcelExtractor('./data/room_details', datetime.datetime.now().astimezone(local_tz).strftime('%Y-%m-%d %H:%M:%S'))
+    ee = ExcelExtractor('./data/room_details', tz_now().strftime('%Y-%m-%d %H:%M:%S'))
     
-    batch_size = 100
-    from_rid = 26500
     while from_rid > 0:
         to_rid = from_rid-batch_size if from_rid > batch_size else 0
         tasks = [parse_detail(rid) for rid in range(from_rid, to_rid, -1)]
@@ -21,6 +17,24 @@ async def main():
         ee.save_as_excel(data)
         from_rid = to_rid
         print(from_rid, time.time()-s)
+
+
+async def schedules(from_rid:int, batch_size:int):
+    s = time.time()
+    ee = ExcelExtractor('./data/room_schedules', tz_now().strftime('%Y-%m-%d %H:%M:%S'))
+    
+    while from_rid > 0:
+        to_rid = from_rid-batch_size if from_rid > batch_size else 0
+        tasks = [aggregate_schedules(rid, months=3) for rid in range(from_rid, to_rid, -1)]
+        data = await asyncio.gather(*tasks)
+        ee.save_as_excel(data)
+        from_rid = to_rid
+        print(from_rid, time.time()-s)
+
+
+async def main():
+    await details(from_rid=26500, batch_size=100)
+    await schedules(from_rid=26500, batch_size=100)
 
 
 if __name__ == "__main__":

@@ -1,11 +1,16 @@
+import json
 import os
 import requests
 from urllib import parse
+
 from bs4 import BeautifulSoup
 import aiofiles
 import httpx
+import asyncio
 
 from consts import create_detail_data_scheme
+from utils import get_ym_formats, get_remain_days_of_month
+
 
 def search(data: dict = None):
     url = "https://33m2.co.kr/app/room/search"
@@ -102,7 +107,7 @@ def search_list(keyword:str = '', page:int = 1, data: dict = None):
     return res
 
 
-def schedule(rid: int, year: str, month: str):
+async def schedule(rid: int, year: int, month: int):
     url = "https://33m2.co.kr/app/room/schedule"
     headers = {
         'Accept': '*/*',
@@ -125,10 +130,11 @@ def schedule(rid: int, year: str, month: str):
     }
     data = {
         "rid": rid,
-        "year": year,
-        "month": month,
+        "year": str(year),
+        "month": str(month).zfill(2),
     }
-    res = requests.post(url, headers=headers, data=data)
+    async with httpx.AsyncClient() as client:
+        res = await client.post(url, headers=headers, data=data)
     return res
 
 
@@ -155,6 +161,36 @@ async def detail(rid: int):
         res = await client.get(url, headers=headers)
     return res
 
+
+async def aggregate_schedules(rid:int, months:int=3) -> dict:
+    """
+    이번달을 포함 <months> 개월간 예약 상태를 count
+    """
+
+    yms = get_ym_formats(months)
+    tasks = [schedule(rid, year, month) for year, month in yms]
+    schedules = await asyncio.gather(*tasks)
+    
+    res = {"rid": rid, "available":0, "disable":0, "booking":0}
+    for ym, sched in zip(yms, schedules):
+        remain_total = get_remain_days_of_month(year=int(ym[0]), month=int(ym[1])) 
+        disable = 0
+        booking = 0
+        try:
+            schedule_list = sched.json()["schedule_list"]
+        except json.decoder.JSONDecodeError:
+            res["available"] += remain_total
+            continue
+
+        for day in schedule_list:
+            if day["status"] == 'booking':
+                booking += 1
+            elif day["status"] == 'disable':
+                disable += 1
+        res["available"] += remain_total - (disable + booking)
+        res["disable"] += disable
+        res["booking"] += booking
+    return res
 
 
 async def parse_detail(rid: int) -> dict:
