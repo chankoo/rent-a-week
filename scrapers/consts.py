@@ -1,4 +1,5 @@
 DETAIL_STR_KEYS = [
+    "rid",
     "title",
     "og_image",
     "room_name",

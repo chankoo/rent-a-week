@@ -167,6 +167,7 @@ def parse_detail(rid: int) -> dict:
     download_room_images(soup, output_path=f'data/room_images/{rid}')
 
     # 메타 정보
+    result["rid"] = rid
     result["title"] = soup.title.text.strip()
     result["og_image"] = soup.find('meta', {'property': 'og:image'})['content']
 
