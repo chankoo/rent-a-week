@@ -1,3 +1,5 @@
+import pytest
+
 from scrapers.scraper_33m2 import search, search_list, schedule, detail, parse_detail, create_detail_data_scheme
 from scrapers.consts import create_detail_data_scheme
 
@@ -16,12 +18,14 @@ def test_schedule():
     assert res.status_code == 200
     assert isinstance(res.json(), dict)
 
-def test_detail():
-    res = detail(rid=21342)
+@pytest.mark.asyncio
+async def test_detail():
+    res = await detail(rid=21342)
     assert res.status_code == 200
     assert isinstance(res.text, str)
 
-def test_parse_detail():
-    res = parse_detail(rid=21342)
+@pytest.mark.asyncio
+async def test_parse_detail():
+    res = await parse_detail(rid=21342)
     assert isinstance(res, dict)
     assert res.keys() == create_detail_data_scheme().keys()

@@ -4,3 +4,7 @@ pytest
 bs4
 pandas
 openpyxl
+asyncio
+aiofiles
+pytest-asyncio
+httpx

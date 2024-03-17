@@ -2,6 +2,8 @@ import os
 import requests
 from urllib import parse
 from bs4 import BeautifulSoup
+import aiofiles
+import httpx
 
 from consts import create_detail_data_scheme
 
@@ -130,7 +132,7 @@ def schedule(rid: int, year: str, month: str):
     return res
 
 
-def detail(rid: int):
+async def detail(rid: int):
     url = f"https://33m2.co.kr/room/detail/{rid}"
     headers = {
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
@@ -149,13 +151,14 @@ def detail(rid: int):
         "Upgrade-Insecure-Requests": "1",
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
     }
-    res = requests.get(url, headers=headers)
+    async with httpx.AsyncClient() as client:
+        res = await client.get(url, headers=headers)
     return res
 
 
 
-def parse_detail(rid: int) -> dict:
-    res = detail(rid)
+async def parse_detail(rid: int) -> dict:
+    res = await detail(rid)
     soup = BeautifulSoup(res.text, 'html.parser')
     
     if soup.find('div', class_='guide_message'):
@@ -164,7 +167,10 @@ def parse_detail(rid: int) -> dict:
     result = create_detail_data_scheme()
 
     # 이미지 다운로드
-    download_room_images(soup, output_path=f'data/room_images/{rid}')
+    try:
+        await download_room_images(soup, output_path=f'data/room_images/{rid}')
+    except httpx.ReadTimeout as e:
+        print(f'{rid}!! httpx.ReadTimeout {download_room_images}')
 
     # 메타 정보
     result["rid"] = rid
@@ -223,26 +229,28 @@ def parse_detail(rid: int) -> dict:
     return result
 
 
-def download_room_images(soup, output_path):
+async def download_room_images(soup, output_path):
     # Create output folder if it doesn't exist
     if not os.path.exists(output_path):
         os.makedirs(output_path)
     
     # Find all divs with class 'swiper-slide' containing image URLs
     image_divs = soup.find_all('div', class_='swiper-slide')
-    
+
     # Counter for image numbering
     image_count = 1
+
     
-    # Download each image
-    for div in image_divs:
-        # Extract image URL
-        image_url = div.find('img')['src']
-        
-        # Download the image
-        response = requests.get(image_url)
-        if response.status_code == 200:
-            # Write the image to a file
-            with open(os.path.join(output_path, f'image_{image_count}.jpg'), 'wb') as f:
-                f.write(response.content)
-            image_count += 1
+    async with httpx.AsyncClient() as client:
+        # Download each image
+        for div in image_divs:
+            # Extract image URL
+            image_url = div.find('img')['src']
+            
+            # Download the image
+            res = await client.get(image_url)
+            if res.status_code == 200:
+                # Write the image to a file
+                async with aiofiles.open(os.path.join(output_path, f'image_{image_count}.jpg'), 'wb') as f:
+                    await f.write(res.read())
+                image_count += 1
