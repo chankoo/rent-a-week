@@ -10,3 +10,12 @@ services:
     ports:
       - "8080:8080"
     init: true
+  predictors:
+    build:
+      context: ./predictors/
+    container_name: predictors
+    volumes:
+      - ./predictors:/raw/predictors
+    ports:
+      - "8081:8081"
+    init: true

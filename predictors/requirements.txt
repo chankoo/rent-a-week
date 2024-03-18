@@ -1,0 +1,11 @@
+ipython
+pytest
+transformers
+pytorch-lightning 
+matplotlib
+numpy
+huggingface_hub
+torchvision
+scikit-learn
+pandas
+openpyxl
