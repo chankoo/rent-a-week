@@ -12,7 +12,7 @@ async def details(from_rid:int, batch_size:int):
     
     while from_rid > 0:
         to_rid = from_rid-batch_size if from_rid > batch_size else 0
-        tasks = [parse_detail(rid) for rid in range(from_rid, to_rid, -1)]
+        tasks = [parse_detail(rid, with_img=False) for rid in range(from_rid, to_rid, -1)]
         data = await asyncio.gather(*tasks, return_exceptions=True)
         data = [row for row in data if row and not isinstance(row, Exception)]
         if data:

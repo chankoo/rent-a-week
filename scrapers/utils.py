@@ -19,7 +19,14 @@ def get_ym_formats(months:int) -> list[tuple[int]]:
             this_month += 1
     return res
 
-def get_remain_days_of_month(year:int, month:int):
+def get_remain_days_of_month(year:int, month:int) -> int:
+    """
+    해당 연월의 남은 일수를 count
+    """
+    now = tz_now()
+    if now.year > year or (now.year == year and now.month > month):
+        return 0
+
     if month == 2:
         month_days = 29 if year%4==0 else 28
     elif month in [1,3,5,7,8,10,12]:
@@ -27,7 +34,6 @@ def get_remain_days_of_month(year:int, month:int):
     else:
         month_days = 30
 
-    now = tz_now()
     if now.year == year and now.month == month:
         return month_days - now.day + 1
     return month_days

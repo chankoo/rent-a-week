@@ -37,12 +37,13 @@ async def test_parse_detail():
 
 def test_get_remain_days_of_month():
     d240317 = datetime.datetime.strptime('2024-03-17', '%Y-%m-%d')
-    d240401 = datetime.datetime.strptime('2024-04-01', '%Y-%m-%d')
-    d240201 = datetime.datetime.strptime('2024-02-01', '%Y-%m-%d')
-    assert 15 == get_remain_days_of_month(d240317.year, d240317.month)
-    assert 30 == get_remain_days_of_month(d240401.year, d240401.month)
-    assert 29 == get_remain_days_of_month(d240201.year, d240201.month)
-
+    today = datetime.datetime.now()
+    d960201 = datetime.datetime.strptime('2096-02-01', '%Y-%m-%d')
+    d990201 = datetime.datetime.strptime('2099-02-01', '%Y-%m-%d')
+    assert 0 == get_remain_days_of_month(d240317.year, d240317.month)
+    assert 0 < get_remain_days_of_month(today.year, today.month)
+    assert 29 == get_remain_days_of_month(d960201.year, d960201.month)
+    assert 28 == get_remain_days_of_month(d990201.year, d990201.month)
 
 @pytest.mark.asyncio
 async def test_aggregate_schedules():
