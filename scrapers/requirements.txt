@@ -8,3 +8,4 @@ asyncio
 aiofiles
 pytest-asyncio
 httpx
+fake-useragent
