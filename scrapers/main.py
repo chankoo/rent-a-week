@@ -15,8 +15,8 @@ async def details(from_rid: int, batch_size: int):
         tasks = [
             parse_detail(rid, with_img=False) for rid in range(from_rid, to_rid, -1)
         ]
-        data = await asyncio.gather(*tasks, return_exceptions=True)
-        data = [row for row in data if row and not isinstance(row, Exception)]
+        data = await asyncio.gather(*tasks)
+        data = [row for row in data if row]
         if data:
             ee.save_as_excel(data)
         from_rid = to_rid
@@ -32,8 +32,8 @@ async def schedules(from_rid: int, batch_size: int, months: int = 3):
         tasks = [
             aggregate_schedules(rid, months) for rid in range(from_rid, to_rid, -1)
         ]
-        data = await asyncio.gather(*tasks, return_exceptions=True)
-        data = [row for row in data if row and not isinstance(row, Exception)]
+        data = await asyncio.gather(*tasks)
+        data = [row for row in data if row]
         if data:
             ee.save_as_excel(data)
         from_rid = to_rid

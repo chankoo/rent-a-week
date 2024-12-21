@@ -1,15 +1,18 @@
 import json
 import os
-import requests
 from urllib import parse
 from bs4 import BeautifulSoup
 import aiofiles
 import httpx
 import asyncio
+from tenacity import retry, stop_after_attempt, retry_if_exception_type, after_log
+import logging
 
 from core import request_get, request_post, sync_request_post
 from consts import create_detail_data_scheme
 from utils import get_ym_formats, get_remain_days_of_month
+
+logger = logging.getLogger(__name__)
 
 
 def search(data: dict = None):
@@ -112,6 +115,13 @@ def search_list(
     return sync_request_post(url, headers=headers, json=data)
 
 
+@retry(
+    retry=retry_if_exception_type(httpx.HTTPError),
+    stop=stop_after_attempt(2),
+    # retry_error_callback=lambda *args: None,
+    reraise=True,
+    after=after_log(logger, logging.ERROR),
+)
 async def schedule(rid: int, year: int, month: int):
     url = "https://33m2.co.kr/app/room/schedule"
     headers = {
@@ -137,9 +147,16 @@ async def schedule(rid: int, year: int, month: int):
         "year": str(year),
         "month": str(month).zfill(2),
     }
-    return await request_post(url, headers=headers, data=data)
+    return await request_post(url, headers=headers, data=data, timeout=30)
 
 
+@retry(
+    retry=retry_if_exception_type(httpx.HTTPError),
+    stop=stop_after_attempt(2),
+    # retry_error_callback=lambda *args: None,
+    reraise=True,
+    after=after_log(logger, logging.ERROR),
+)
 async def detail(rid: int):
     url = f"https://33m2.co.kr/room/detail/{rid}"
     headers = {
@@ -158,7 +175,7 @@ async def detail(rid: int):
         "Sec-Fetch-User": "?1",
         "Upgrade-Insecure-Requests": "1",
     }
-    return await request_get(url, headers=headers)
+    return await request_get(url, headers=headers, timeout=30)
 
 
 async def aggregate_schedules(rid: int, months: int = 3) -> dict:

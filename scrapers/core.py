@@ -56,7 +56,7 @@ class ProxyManager:
     )
     def refresh_proxy_list(self):
         """프록시 목록 갱신"""
-        url = "https://proxylist.geonode.com/api/proxy-list?country=KR&limit=100&page=1&sort_by=speed&sort_type=asc"
+        url = "https://proxylist.geonode.com/api/proxy-list?country=KR&protocols=socks5&speed=fast&limit=100&page=1&sort_by=lastChecked&sort_type=desc"
         res = sync_request_get(url, timeout=25)
         data = res.json()["data"]
         proxies = [
