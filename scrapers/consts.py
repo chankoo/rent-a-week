@@ -17,6 +17,7 @@ DETAIL_LST_KEYS = [
     "reviews",
 ]
 
+
 def create_detail_data_scheme():
     scheme = {key: "" for key in DETAIL_STR_KEYS}
     scheme.update({key: [] for key in DETAIL_LST_KEYS})
