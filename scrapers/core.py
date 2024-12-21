@@ -17,7 +17,7 @@ class UserAgentManager:
 
     def refresh_user_agent(self):
         """User-Agent 새로 갱신"""
-        self._ua_value = self._ua.random
+        self._ua_value = UserAgent().random
 
 
 async def request_get(
