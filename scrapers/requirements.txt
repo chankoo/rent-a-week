@@ -7,5 +7,6 @@ openpyxl
 asyncio
 aiofiles
 pytest-asyncio
-httpx
+httpx[socks]
 fake-useragent
+tenacity
