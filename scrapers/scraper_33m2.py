@@ -7,9 +7,9 @@ import aiofiles
 import httpx
 import asyncio
 
-from scrapers.core import request_get, request_post, sync_request_post
-from scrapers.consts import create_detail_data_scheme
-from scrapers.utils import get_ym_formats, get_remain_days_of_month
+from core import request_get, request_post, sync_request_post
+from consts import create_detail_data_scheme
+from utils import get_ym_formats, get_remain_days_of_month
 
 
 def search(data: dict = None):
