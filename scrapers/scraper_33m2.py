@@ -2,14 +2,14 @@ import json
 import os
 import requests
 from urllib import parse
-
 from bs4 import BeautifulSoup
 import aiofiles
 import httpx
 import asyncio
 
-from consts import create_detail_data_scheme
-from utils import get_ym_formats, get_remain_days_of_month
+from scrapers.core import request_get, request_post, sync_request_post
+from scrapers.consts import create_detail_data_scheme
+from scrapers.utils import get_ym_formats, get_remain_days_of_month
 
 
 def search(data: dict = None):
@@ -30,7 +30,6 @@ def search(data: dict = None):
         "Sec-Fetch-Dest": "empty",
         "Sec-Fetch-Mode": "cors",
         "Sec-Fetch-Site": "same-origin",
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
         "X-Requested-With": "XMLHttpRequest",
     }
     payload = {
@@ -60,8 +59,7 @@ def search(data: dict = None):
     }
     if data:
         payload.update(data)
-    res = requests.post(url, json=payload, headers=headers)
-    return res
+    return sync_request_post(url, headers=headers, json=payload)
 
 
 def search_list(
@@ -90,7 +88,6 @@ def search_list(
         "Sec-Fetch-Dest": "empty",
         "Sec-Fetch-Mode": "cors",
         "Sec-Fetch-Site": "same-origin",
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
         "X-Requested-With": "XMLHttpRequest",
     }
 
@@ -112,8 +109,7 @@ def search_list(
         "sort": "recent",
         "now_page": f"{page}",
     }
-    res = requests.post(url, json=data, headers=headers)
-    return res
+    return sync_request_post(url, headers=headers, json=data)
 
 
 async def schedule(rid: int, year: int, month: int):
@@ -134,7 +130,6 @@ async def schedule(rid: int, year: int, month: int):
         "Sec-Fetch-Dest": "empty",
         "Sec-Fetch-Mode": "cors",
         "Sec-Fetch-Site": "same-origin",
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
         "X-Requested-With": "XMLHttpRequest",
     }
     data = {
@@ -142,9 +137,7 @@ async def schedule(rid: int, year: int, month: int):
         "year": str(year),
         "month": str(month).zfill(2),
     }
-    async with httpx.AsyncClient() as client:
-        res = await client.post(url, headers=headers, data=data)
-    return res
+    return await request_post(url, headers=headers, data=data)
 
 
 async def detail(rid: int):
@@ -164,11 +157,8 @@ async def detail(rid: int):
         "Sec-Fetch-Site": "same-origin",
         "Sec-Fetch-User": "?1",
         "Upgrade-Insecure-Requests": "1",
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
     }
-    async with httpx.AsyncClient() as client:
-        res = await client.get(url, headers=headers)
-    return res
+    return await request_get(url, headers=headers)
 
 
 async def aggregate_schedules(rid: int, months: int = 3) -> dict:
